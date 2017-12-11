@@ -42,7 +42,8 @@ function newGame(id, body) {
         playersDistribution,
         started: false,
         day: 0,
-        night: true
+        night: true,
+        currentNightDeaths: []
     };
 }
 
@@ -76,14 +77,14 @@ app.get('/types', (req, res) => {
     res.json(CHARACTERS);
 });
 
-app.post('/newGame', (req, res) => {
+app.post('/game', (req, res) => {
     let game = newGame(rooms.length, req.body);
     rooms.push(game);
     res.json(game);
 });
 
-app.get('/enterGame', (req, res) => {
-    let currentRoom = rooms[req.query.room];
+app.put('/game/:room', (req, res) => {
+    let currentRoom = rooms[req.params.room];
     if (currentRoom.started) {
         res.status(400).send('Game has already started');
     } else if (currentRoom.players.length >= currentRoom.numberOfPlayers) {
@@ -96,16 +97,16 @@ app.get('/enterGame', (req, res) => {
     }
 });
 
-app.get('/infoRoom', (req, res) => {
-    res.json(rooms[req.query.id]);
+app.get('/room/:room', (req, res) => {
+    res.json(rooms[req.params.room]);
 });
 
 app.get('/info', (req, res) => {
     res.json(rooms);
 });
 
-app.get('/startGame', (req, res) => {
-    let currentRoom = rooms[req.query.room];
+app.get('/game/start/:room', (req, res) => {
+    let currentRoom = rooms[req.params.room];
     if (currentRoom.started) {
         res.status(400).send('Game has already started');
     } else if (currentRoom.players.length < currentRoom.numberOfPlayers) {
@@ -116,8 +117,8 @@ app.get('/startGame', (req, res) => {
     }
 });
 
-app.get('/getAliveCharacters', (req, res) => {
-    let currentRoom = rooms[req.query.room];
+app.get('/game/aliveCharacters/:room', (req, res) => {
+    let currentRoom = rooms[req.params.room];
     let characters = currentRoom.players.filter((player) => {
         if (req.query.hasOwnProperty('characterType')) {
             return player.character === req.query.characterType && player.alive;
@@ -127,8 +128,8 @@ app.get('/getAliveCharacters', (req, res) => {
     res.json(characters);
 });
 
-app.get('/fallInLove', (req, res) => {
-    let currentRoom = rooms[req.query.room];
+app.get('/game/fallInLove/:room', (req, res) => {
+    let currentRoom = rooms[req.params.room];
     let playerA = req.query.playerA;
     let playerB = req.query.playerB;
     currentRoom.players[playerA].lover = true;
@@ -138,33 +139,42 @@ app.get('/fallInLove', (req, res) => {
     res.status(200).send(`${currentRoom.players[playerA].name} and ${currentRoom.players[playerB].name} are in love`);
 });
 
-app.get('/kill', (req, res) => {
-    let currentRoom = rooms[req.query.room];
+app.get('/game/kill/:room', (req, res) => {
+    let currentRoom = rooms[req.params.room];
     let playerID = req.query.id;
-    let deads = [];
     currentRoom.players[playerID].alive = false;
     currentRoom.players[playerID].deathDay = currentRoom.day;
     currentRoom.players[playerID].killer = req.query.killer;
-    deads.push(currentRoom.players[playerID]);
-    if (currentRoom.players[playerID].lover) {
-        let loverID = currentRoom.players[playerID].loverID;
-        currentRoom.players[loverID].alive = false;
-        currentRoom.players[loverID].deathDay = currentRoom.day;
-        currentRoom.players[loverID].killer = CHARACTERS.CUPID;
-        deads.push(currentRoom.players[loverID]);
-    }
-    res.json(deads);
+    currentRoom.currentNightDeaths.push(currentRoom.players[playerID]);
+    // if (currentRoom.players[playerID].lover) {
+    //     let loverID = currentRoom.players[playerID].loverID;
+    //     currentRoom.players[loverID].alive = false;
+    //     currentRoom.players[loverID].deathDay = currentRoom.day;
+    //     currentRoom.players[loverID].killer = CHARACTERS.CUPID;
+    //     deads.push(currentRoom.players[loverID]);
+    // }
+    // res.json(deads);
 });
 
-app.get('/wakeTown', (req, res) => {
-    let currentRoom = rooms[req.query.room];
+app.get('/game/getCurrentNightDeaths/:room', (req, res) => {
+    let currentRoom = rooms[req.params.room];
+    res.json(currentRoom.currentNightDeaths);
+});
+
+
+app.get('/game/wakeTown/:room', (req, res) => {
+    let currentRoom = rooms[req.params.room];
     currentRoom.day++;
     currentRoom.night = false;
     res.status(200).status('The town is waking up');
 });
 
-app.get('/asleepTown', (req, res) => {
-    let currentRoom = rooms[req.query.room];
+app.get('/game/asleepTown/:room', (req, res) => {
+    let currentRoom = rooms[req.params.room];
     currentRoom.night = true;
     res.status(200).send('The town falls asleep');
+});
+
+app.get('/', (req, res) => {
+    res.send('Hello world');
 });
