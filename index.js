@@ -105,6 +105,11 @@ app.get('/info', (req, res) => {
     res.json(rooms);
 });
 
+app.get('/reset', (req, res) => {
+    rooms = [];
+    res.status(200).send('All games deleted');
+});
+
 app.get('/game/start/:room', (req, res) => {
     let currentRoom = rooms[req.params.room];
     if (currentRoom.started) {
