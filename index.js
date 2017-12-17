@@ -6,13 +6,13 @@ const host = "localhost";
 
 
 const CHARACTERS = {
-    WEREWOLF: 'w',
-    PEASANT: 'p',
-    CUPID: 'c',
+    WEREWOLF: 'werewolf',
+    VILLAGER: 'villager',
+    CUPID: 'cupid',
     WITCH: 'witch',
-    GIRL: 'g',
-    HUNTER: 'h',
-    SEER: 's'
+    GIRL: 'littleGirl',
+    HUNTER: 'hunter',
+    SEER: 'seer'
 };
 
 function shuffle(a) {
@@ -83,7 +83,7 @@ app.post('/game', (req, res) => {
     res.json(game);
 });
 
-app.put('/game/:room', (req, res) => {
+app.post('/game/:room', (req, res) => {
     let currentRoom = rooms[req.params.room];
     if (currentRoom.started) {
         res.status(400).send('Game has already started');
@@ -91,7 +91,7 @@ app.put('/game/:room', (req, res) => {
         res.status(400).send('Game is full');
     } else {
         let character = currentRoom.playersDistribution[currentRoom.players.length];
-        let player = newPlayer(currentRoom.players.length, req.query.name, character);
+        let player = newPlayer(currentRoom.players.length, req.body.name, character);
         currentRoom.players.push(player);
         res.json(player);
     }
