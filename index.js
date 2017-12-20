@@ -23,14 +23,11 @@ function shuffle(a) {
     return a;
 }
 
-function newGame(id, body) {
+function newGame(id, characters) {
     let playersDistribution = [];
-    for(let typeName in CHARACTERS){
-        let type = CHARACTERS[typeName];
-        if (body.hasOwnProperty(type)) {
-            for (let i = 0; i < parseInt(body[type]); i++) {
-                playersDistribution.push(type);
-            }
+    for(let character in characters){
+        for(let i = 0; i < characters[character]; i++){
+            playersDistribution.push(character);
         }
     }
     playersDistribution = shuffle(playersDistribution);
@@ -78,7 +75,7 @@ app.get('/types', (req, res) => {
 });
 
 app.post('/game', (req, res) => {
-    let game = newGame(rooms.length, req.body);
+    let game = newGame(rooms.length, req.body.characters);
     rooms.push(game);
     res.json(game);
 });
