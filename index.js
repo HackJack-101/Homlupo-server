@@ -25,8 +25,8 @@ function shuffle(a) {
 
 function newGame(id, characters) {
     let playersDistribution = [];
-    for(let character in characters){
-        for(let i = 0; i < characters[character]; i++){
+    for (let character in characters) {
+        for (let i = 0; i < characters[character]; i++) {
             playersDistribution.push(character);
         }
     }
@@ -40,7 +40,8 @@ function newGame(id, characters) {
         started: false,
         day: 0,
         night: true,
-        currentNightDeaths: []
+        currentNightDeaths: [],
+        gameMasterUpdate: false
     };
 }
 
@@ -90,6 +91,7 @@ app.post('/game/:room', (req, res) => {
         let character = currentRoom.playersDistribution[currentRoom.players.length];
         let player = newPlayer(currentRoom.players.length, req.body.name, character);
         currentRoom.players.push(player);
+        currentRoom.gameMasterUpdate = true;
         res.json(player);
     }
 });
@@ -179,4 +181,35 @@ app.get('/game/asleepTown/:room', (req, res) => {
 
 app.get('/', (req, res) => {
     res.send('Hello world');
+});
+
+const WebSocket = require('ws');
+
+const wss = new WebSocket.Server({port: 3003});
+
+wss.on('connection', function connection(ws) {
+    let data;
+    let intervalStarted = false;
+    ws.on('message', function incoming(message) {
+        if (message.substr(0, 5) === 'room:') {
+            let id = parseInt(message.substr(5));
+            intervalStarted = true;
+            data = setInterval(() => {
+                if (rooms[id].gameMasterUpdate){
+                    rooms[id].gameMasterUpdate = false;
+                    ws.send(JSON.stringify({room: rooms[id]}));
+                }
+            }, 500);
+        } else if (message === 'stop') {
+            if (intervalStarted) {
+                clearInterval(data);
+            }
+        } else {
+            intervalStarted = true;
+            data = setInterval(() => {
+                ws.send(JSON.stringify({rooms}));
+            }, 500);
+        }
+    });
+    ws.send('Connected');
 });
