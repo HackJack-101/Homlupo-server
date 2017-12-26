@@ -85,7 +85,8 @@ app.post('/game', (req, res) => {
 });
 
 app.post('/game/:room', (req, res) => {
-    let currentRoom = rooms[req.params.room];
+    let id = req.params.room;
+    let currentRoom = rooms[id];
     if (currentRoom.started) {
         res.status(400).send('Game has already started');
     } else if (currentRoom.players.length >= currentRoom.numberOfPlayers) {
@@ -94,12 +95,9 @@ app.post('/game/:room', (req, res) => {
         let character = currentRoom.playersDistribution[currentRoom.players.length];
         let player = newPlayer(currentRoom.players.length, req.body.name, character);
         currentRoom.players.push(player);
-        wss.clients.forEach(function each(client) {
-            client.send({room: currentRoom});
-        });
         if (gameMasters.hasOwnProperty('room' + id)) {
             let gameMaster = gameMasters['room' + id];
-            gameMaster.send({room: currentRoom});
+            gameMaster.send(JSON.stringify({room: currentRoom}));
         }
         res.json(player);
     }
@@ -207,11 +205,9 @@ wss.on('connection', function connection(ws) {
         if (message.substr(0, 5) === 'room:') {
             let id = parseInt(message.substr(5));
             gameMasters['room' + id] = ws;
-            ws.send('subscribed to room ' + id);
         } else if (message.substr(0, 7) === 'unroom:') {
             let id = parseInt(message.substr(7));
             delete gameMasters['room' + id];
-            ws.send('unsubscribed to room ' + id);
         }
     });
     ws.send('connected');
