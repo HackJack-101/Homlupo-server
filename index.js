@@ -4,6 +4,9 @@ const bodyParser = require("body-parser");
 const port = "3002";
 const host = "localhost";
 
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({port: 3003});
+
 
 const CHARACTERS = {
     WEREWOLF: 'werewolf',
@@ -40,8 +43,7 @@ function newGame(id, characters) {
         started: false,
         day: 0,
         night: true,
-        currentNightDeaths: [],
-        gameMasterUpdate: false
+        currentNightDeaths: []
     };
 }
 
@@ -70,6 +72,7 @@ let server = app.listen(port, host, function () {
 });
 
 let rooms = [];
+let gameMasters = {};
 
 app.get('/types', (req, res) => {
     res.json(CHARACTERS);
@@ -91,7 +94,13 @@ app.post('/game/:room', (req, res) => {
         let character = currentRoom.playersDistribution[currentRoom.players.length];
         let player = newPlayer(currentRoom.players.length, req.body.name, character);
         currentRoom.players.push(player);
-        currentRoom.gameMasterUpdate = true;
+        wss.clients.forEach(function each(client) {
+            client.send({room: currentRoom});
+        });
+        if (gameMasters.hasOwnProperty('room' + id)) {
+            let gameMaster = gameMasters['room' + id];
+            gameMaster.send({room: currentRoom});
+        }
         res.json(player);
     }
 });
@@ -183,33 +192,27 @@ app.get('/', (req, res) => {
     res.send('Hello world');
 });
 
-const WebSocket = require('ws');
 
-const wss = new WebSocket.Server({port: 3003});
+app.get('/ping/:room', (req, res) => {
+    let id = req.params.room;
+    if (gameMasters.hasOwnProperty('room' + id)) {
+        let gameMaster = gameMasters['room' + id];
+        gameMaster.send('pong');
+    }
+    res.send('ping sent');
+});
 
 wss.on('connection', function connection(ws) {
-    let data;
-    let intervalStarted = false;
     ws.on('message', function incoming(message) {
         if (message.substr(0, 5) === 'room:') {
             let id = parseInt(message.substr(5));
-            intervalStarted = true;
-            data = setInterval(() => {
-                if (rooms[id].gameMasterUpdate){
-                    rooms[id].gameMasterUpdate = false;
-                    ws.send(JSON.stringify({room: rooms[id]}));
-                }
-            }, 500);
-        } else if (message === 'stop') {
-            if (intervalStarted) {
-                clearInterval(data);
-            }
-        } else {
-            intervalStarted = true;
-            data = setInterval(() => {
-                ws.send(JSON.stringify({rooms}));
-            }, 500);
+            gameMasters['room' + id] = ws;
+            ws.send('subscribed to room ' + id);
+        } else if (message.substr(0, 7) === 'unroom:') {
+            let id = parseInt(message.substr(7));
+            delete gameMasters['room' + id];
+            ws.send('unsubscribed to room ' + id);
         }
     });
-    ws.send('Connected');
+    ws.send('connected');
 });
