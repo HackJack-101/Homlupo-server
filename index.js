@@ -107,6 +107,10 @@ app.get('/room/:room', (req, res) => {
     res.json(rooms[req.params.room]);
 });
 
+app.get('/room/:room/:id', (req, res) => {
+    res.json(rooms[req.params.room].players[req.params.id]);
+});
+
 app.get('/info', (req, res) => {
     res.json(rooms);
 });
